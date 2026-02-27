@@ -228,6 +228,7 @@ void drawBootScreen();
 void drawMainPage();
 void drawMainHeader();
 void drawProfilePills();
+void drawMainCards();
 
 // UI drawing helpers
 void drawLogsPagePlaceholder();
@@ -366,19 +367,23 @@ void drawBootScreen()
 
 void drawMainHeader()
 {
-    lcd.setTextDatum(top_left);
+    const int16_t marginY = 16;
+    const int16_t marginX = 16;
+
+    // === MAIN TITLE CENTERED ===
+    lcd.setTextDatum(top_center);
     lcd.setTextColor(TFT_WHITE, TFT_BLACK);
     lcd.setTextSize(2);
 
-    const int16_t marginX = 16;
-    const int16_t marginY = 12;
+    lcd.drawString("Main", lcd.width() / 2, marginY);
 
-    lcd.drawString("Main", marginX, marginY);
-
-    lcd.setTextSize(2);
-
-    // === Explain Subtitle ===
-    lcd.drawString("Enviroment Controller - Profile overview", marginX, marginY + 28);
+    // === Subtitle centered ===
+    lcd.setTextSize(1);
+    lcd.drawString(
+        "Environment Controller - Profile overview",
+        lcd.width() / 2,
+        marginY + 28
+    );
 
     const char *profileLable = nullptr;
     switch (currentProfile)
@@ -412,59 +417,111 @@ void drawMainHeader()
 
 void drawProfilePills()
 {
-// Draw five pills (P1–P5) horizontally.
-// The currently active profile is highlighted.
+    // Draw five pills (P1–P5) horizontally.
+    // The currently active profile is highlighted.
 
-const int16_t areaTop = 56;
-const int16_t areaHeight = 40;
-const int16_t marginX = 16;
-const int16_t spacing = 8;
+    const int16_t areaTop = 75;
+    const int16_t areaHeight = 50;
+    const int16_t marginX = 16;
+    const int16_t spacing = 8;
 
-const std::size_t profileCount = static_cast<std::size_t>(Profile::Count);
-const int16_t totalWidth = lcd.width() - 2 * marginX;
-const int16_t pillWidth = (totalWidth - (profileCount - 1) * spacing) / profileCount;
-const int16_t pillHeight = areaHeight;
+    const std::size_t profileCount = static_cast<std::size_t>(Profile::Count);
+    const int16_t totalWidth = lcd.width() - 2 * marginX;
+    const int16_t pillWidth = (totalWidth - (profileCount - 1) * spacing) / profileCount;
+    const int16_t pillHeight = areaHeight;
 
-lcd.setTextSize(1);
-lcd.setTextDatum(middle_center);
+    lcd.setTextSize(1);
+    lcd.setTextDatum(middle_center);
 
-for(std::size_t i = 0; i < profileCount; ++i)
+    for (std::size_t i = 0; i < profileCount; ++i)
+    {
+        const int16_t x = marginX + i * (pillWidth + spacing);
+        const int16_t y = areaTop;
+
+        const int16_t centerX = x + pillWidth / 2;
+        const int16_t centerY = y + pillHeight / 2;
+
+        const Profile profile = static_cast<Profile>(i);
+        const bool isActive = (profile == currentProfile);
+
+        // Build label "P1" ... "P5"
+        char label[4] = {'P', static_cast<char>('1' + i), '\0', '\0'};
+
+        if (isActive)
+        {
+            lcd.fillRoundRect(x, y, pillWidth, pillHeight, 8, TFT_WHITE);
+            lcd.setTextColor(TFT_BLACK, TFT_WHITE);
+            lcd.drawString(label, centerX, centerY);
+            lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+        }
+        else
+        {
+            lcd.drawRoundRect(x, y, pillWidth, pillHeight, 8, TFT_WHITE);
+            lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+            lcd.drawString(label, centerX, centerY);
+        }
+
+        // Reset datum after drawing.
+        lcd.setTextDatum(top_left);
+    }
+}
+
+void drawMainCards()
 {
-    const int16_t x = marginX + i * (pillWidth + spacing);
-    const int16_t y = areaTop;
+    // Placeholder for the main cards that show the current environment data and controls.
+    // For now, just draw a big rectangle.
 
-    const int16_t centerX = x + pillWidth / 2;
-    const int16_t centerY = y + pillHeight / 2;
+    const int16_t marginX = 16;
+    const int16_t marginY = 16;
+    const int16_t startY = 140;
 
-    const Profile profile = static_cast<Profile>(i);
-    const bool isActive = (profile == currentProfile);
+    const int16_t totalWidth = lcd.width() - 2 * marginX;
+    const int cardCount = 3;
+    const int16_t spacing = 16;
 
-    // Build label "P1" ... "P5"
-    char label[4] = {'P', static_cast<char>('1' + i), '\0', '\0'};
+    const int16_t cardWidth = (totalWidth - (spacing * (cardCount - 1))) / cardCount;
+    const int16_t cardHeight = 300;
 
-    if (isActive)
-    {
-        lcd.fillRoundRect(x, y, pillWidth, pillHeight, 8, TFT_WHITE);
-        lcd.setTextColor(TFT_BLACK, TFT_WHITE);
-        lcd.drawString(label, centerX, centerY);
-        lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-    }
-    else
-    {
-        lcd.drawRoundRect(x, y, pillWidth, pillHeight, 8, TFT_WHITE);
-        lcd.setTextColor(TFT_WHITE, TFT_BLACK);
-        lcd.drawString(label, centerX, centerY);
-    }
-
-    // Reset datum after drawing.
+    lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+    lcd.setTextSize(1);
     lcd.setTextDatum(top_left);
-  }
+
+    const char *titles[cardCount] = {
+        "VPD",
+        "Temperature",
+        "Humidity (rH)"};
+
+    const char *values[cardCount] = {
+        "--.- kPa",
+        "--.- C",
+        "-- %"};
+
+    for (int i = 0; i < cardCount; ++i)
+    {
+        const int16_t x = marginX + i * (cardWidth + spacing);
+        const int16_t y = startY;
+
+        // Card border
+        lcd.drawRoundRect(x, y, cardWidth, cardHeight, 12, TFT_WHITE);
+
+        // Card title
+        lcd.drawString(titles[i], x + 12, y + 12);
+
+        // Placeholder value
+        lcd.setTextSize(2);
+        lcd.drawString(values[i], x + 12, y + 50);
+        lcd.setTextSize(1);
+    }
+
+    // Reset datum for other drawing routines
+    lcd.setTextDatum(top_left);
 }
 
 void drawMainPage()
 {
     drawMainHeader();
     drawProfilePills();
+    drawMainCards();
 }
 
 void drawLogsPagePlaceholder()
