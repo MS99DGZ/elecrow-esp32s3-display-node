@@ -1,0 +1,12 @@
+# === PlatformIO build artifacts ===
+.pio/
+
+# === VS Code ===
+.vscode/
+
+# === macOS ===
+.DS_Store
+
+# === Temporary / cache ===
+*.log
+*.tmp
