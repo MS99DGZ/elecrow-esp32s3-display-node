@@ -28,6 +28,94 @@ static constexpr int SD_CS = 10;
 // === SD Status Flag ===
 static bool sdOK = false;
 
+// === Environment Profiles ===
+
+enum class Profile
+{
+    P1 = 0,
+    P2,
+    P3,
+    P4,
+    P5,
+    Count
+};
+
+struct ProfileSettings
+{
+    float targetVpdKPa;
+    float minTempC;
+    float maxTempC;
+    float baseHumidityPercent;
+};
+
+// --- Profile defaults ---
+// Each block is intentionally verbose and commented so it's easy to tweak later.
+
+// Profile 1
+static const ProfileSettings PROFILE_P1 =
+    {
+        0.8f,  // targetVpdKPa
+        20.0f, // mindTempC
+        24.0f, // maxTempC
+        70.0f, // baseHumidityPercent
+};
+
+// Profile 2
+static const ProfileSettings PROFILE_P2 =
+    {
+        1.0f,  // targetVpdKPa
+        22.0f, // mindTempC
+        26.0f, // maxTempC
+        65.0f, // baseHumidityPercent
+};
+
+// Profile 3
+static const ProfileSettings PROFILE_P3 =
+    {
+        1.2f,  // targetVpdKPa
+        22.0f, // mindTempC
+        26.0f, // maxTempC
+        60.0f, // baseHumidityPercent
+};
+
+// Profile 4
+static const ProfileSettings PROFILE_P4 =
+    {
+        1.3f,  // targetVpdKPa
+        22.0f, // mindTempC
+        26.0f, // maxTempC
+        55.0f, // baseHumidityPercent
+};
+
+// Profile 5
+static const ProfileSettings PROFILE_P5 =
+    {
+        1.5f,  // targetVpdKPa
+        22.0f, // mindTempC
+        26.0f, // maxTempC
+        50.0f, // baseHumidityPercent
+};
+
+// === Table that collects all profiles in order P1–P5 ===
+
+static const ProfileSettings PROFILE_TABLE[static_cast<std::size_t>(Profile::Count)] =
+    {
+        PROFILE_P1,
+        PROFILE_P2,
+        PROFILE_P3,
+        PROFILE_P4,
+        PROFILE_P5};
+
+// === Currently active environment profile ===
+static Profile currentProfile = Profile::P1;
+
+// Helper to access the configuration of a given profile.
+static const ProfileSettings &getProfileSettings(Profile profile)
+{
+    const auto index = static_cast<std::size_t>(profile);
+    return PROFILE_TABLE[index];
+}
+
 // === Page State ===
 // Order chosen to match the original project: Main -> Logs -> Modules -> Camera
 enum class Page
@@ -135,7 +223,13 @@ void drawCurrentPage();
 
 // UI drawing helpers
 void drawBootScreen();
-void drawMainPagePlaceholder();
+
+// Main page
+void drawMainPage();
+void drawMainHeader();
+void drawProfilePills();
+
+// UI drawing helpers
 void drawLogsPagePlaceholder();
 void drawModulesPagePlaceholder();
 void drawCameraPagePlaceholder();
@@ -230,7 +324,7 @@ void drawCurrentPage()
     switch (currentPage)
     {
     case Page::Main:
-        drawMainPagePlaceholder();
+        drawMainPage();
         break;
 
     case Page::Logs:
@@ -270,16 +364,107 @@ void drawBootScreen()
     }
 }
 
-void drawMainPagePlaceholder()
+void drawMainHeader()
 {
-    lcd.setTextDatum(top_center);
+    lcd.setTextDatum(top_left);
     lcd.setTextColor(TFT_WHITE, TFT_BLACK);
     lcd.setTextSize(2);
 
-    lcd.drawString("Main Page", lcd.width() / 2, 16);
+    const int16_t marginX = 16;
+    const int16_t marginY = 12;
 
-    lcd.setTextSize(1);
-    lcd.drawString("Here the Main Dashboard UI will be implemented.", lcd.width() / 2, 48);
+    lcd.drawString("Main", marginX, marginY);
+
+    lcd.setTextSize(2);
+
+    // === Explain Subtitle ===
+    lcd.drawString("Enviroment Controller - Profile overview", marginX, marginY + 28);
+
+    const char *profileLable = nullptr;
+    switch (currentProfile)
+    {
+    case Profile::P1:
+        profileLable = "Profile P1";
+        break;
+    case Profile::P2:
+        profileLable = "Profile P2";
+        break;
+    case Profile::P3:
+        profileLable = "Profile P3";
+        break;
+    case Profile::P4:
+        profileLable = "Profile P4";
+        break;
+    case Profile::P5:
+        profileLable = "Profile P5";
+        break;
+    default:
+        profileLable = "Profile ?";
+        break;
+    }
+
+    lcd.setTextDatum(top_right);
+    lcd.drawString(profileLable, lcd.width() - marginX, marginY + 8);
+
+    // Reset datum to a sane default for other drawing routines.
+    lcd.setTextDatum(top_left);
+}
+
+void drawProfilePills()
+{
+// Draw five pills (P1–P5) horizontally.
+// The currently active profile is highlighted.
+
+const int16_t areaTop = 56;
+const int16_t areaHeight = 40;
+const int16_t marginX = 16;
+const int16_t spacing = 8;
+
+const std::size_t profileCount = static_cast<std::size_t>(Profile::Count);
+const int16_t totalWidth = lcd.width() - 2 * marginX;
+const int16_t pillWidth = (totalWidth - (profileCount - 1) * spacing) / profileCount;
+const int16_t pillHeight = areaHeight;
+
+lcd.setTextSize(1);
+lcd.setTextDatum(middle_center);
+
+for(std::size_t i = 0; i < profileCount; ++i)
+{
+    const int16_t x = marginX + i * (pillWidth + spacing);
+    const int16_t y = areaTop;
+
+    const int16_t centerX = x + pillWidth / 2;
+    const int16_t centerY = y + pillHeight / 2;
+
+    const Profile profile = static_cast<Profile>(i);
+    const bool isActive = (profile == currentProfile);
+
+    // Build label "P1" ... "P5"
+    char label[4] = {'P', static_cast<char>('1' + i), '\0', '\0'};
+
+    if (isActive)
+    {
+        lcd.fillRoundRect(x, y, pillWidth, pillHeight, 8, TFT_WHITE);
+        lcd.setTextColor(TFT_BLACK, TFT_WHITE);
+        lcd.drawString(label, centerX, centerY);
+        lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+    }
+    else
+    {
+        lcd.drawRoundRect(x, y, pillWidth, pillHeight, 8, TFT_WHITE);
+        lcd.setTextColor(TFT_WHITE, TFT_BLACK);
+        lcd.drawString(label, centerX, centerY);
+    }
+
+    // Reset datum after drawing.
+    lcd.setTextDatum(top_left);
+  }
+}
+
+void drawMainPage()
+{
+    drawMainHeader();
+    drawProfilePills();
 }
 
 void drawLogsPagePlaceholder()
